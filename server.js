@@ -87,21 +87,7 @@ async function processInstruction(instruction) {
         const cleanResponse = fullResponse.replace(/```json|```/g, "").trim();
         console.log("Cleaned AI response:", cleanResponse);
 
-        // ✅ **Fix: Parse JSON correctly & ensure a valid response**
-        const parsedResponse = JSON.parse(cleanResponse);
-        if (!parsedResponse.message) {
-            if (parsedResponse.action === "addButton") {
-                parsedResponse.message = `Added button: ${parsedResponse.parameters.text} (${parsedResponse.parameters.url}) - ${parsedResponse.parameters.color}`;
-            } else if (parsedResponse.action === "addButtons" && parsedResponse.parameters?.buttons?.length > 0) {
-                parsedResponse.message = parsedResponse.parameters.buttons.map(
-                    btn => `🔹 ${btn.text} (${btn.url}) - ${btn.color}`
-                ).join("\n");
-            } else {
-                parsedResponse.message = "✅ Successfully processed your request.";
-            }
-        }
-
-        return parsedResponse;
+        return JSON.parse(cleanResponse);
     } catch (error) {
         console.error("Error processing instruction with Gemini:", error);
         return { action: "error", message: "AI processing failed." };
@@ -115,41 +101,25 @@ app.post('/api/update', async (req, res) => {
 
     const result = await processInstruction(instruction);
 
+    let updateResult;
     switch (result.action) {
         case "addButton":
-            return res.json(handleAddButton(result.parameters));
+            updateResult = handleAddButton(result.parameters);
+            break;
         case "updateText":
-            return res.json(handleUpdateText(result.parameters));
+            updateResult = handleUpdateText(result.parameters);
+            break;
         case "updateLogo":
-            return res.json(handleUpdateLogo(result.parameters));
+            updateResult = handleUpdateLogo(result.parameters);
+            break;
         case "updateBanner":
-            return res.json(handleUpdateBanner(result.parameters));
+            updateResult = handleUpdateBanner(result.parameters);
+            break;
         default:
             return res.json({ action: 'unknown', message: 'Could not understand instruction' });
     }
-});
 
-// 📌 **WhatsApp Webhook for Handling AI Responses**
-app.post('/api/whatsapp-webhook', async (req, res) => {
-    console.log('Received WhatsApp message:', req.body);
-    const messageBody = req.body.Body;
-    const result = await processInstruction(messageBody);
-
-    const twiml = new twilio.twiml.MessagingResponse();
-
-    if (!result || result.action === 'unknown') {
-        twiml.message("❌ I couldn't understand that instruction. Try something like 'Add a link to instagram.com in pink'.");
-    } else if (result.action === "addButton" && result.parameters) {
-        twiml.message(`✅ Added button: ${result.parameters.text} (${result.parameters.url}) - ${result.parameters.color}`);
-    } else if (result.action === "addButtons" && result.parameters?.buttons?.length > 0) {
-        let buttonList = result.parameters.buttons.map(btn => `🔹 ${btn.text} (${btn.url}) - ${btn.color}`).join("\n");
-        twiml.message(`✅ Added the following buttons:\n${buttonList}`);
-    } else {
-        twiml.message("✅ Successfully processed your request.");
-    }
-
-    res.writeHead(200, { 'Content-Type': 'text/xml' });
-    res.end(twiml.toString());
+    res.json({ success: true, updatedState: webpageState });
 });
 
 // 📌 **Functions to Update Webpage State**
@@ -157,29 +127,11 @@ function handleAddButton(params) {
     const { url, text = "New Button", color = "#3498db" } = params;
     const button = { url, text, color };
     webpageState.buttons.push(button);
-    return { action: 'addButton', message: `Added button linking to ${url} with color ${color}` };
-}
-
-function handleUpdateText(params) {
-    const { text } = params;
-    webpageState.textContent = `<p>${text}</p>`;
-    return { action: 'updateText', message: 'Text content updated' };
-}
-
-function handleUpdateLogo(params) {
-    const { url } = params;
-    webpageState.logoUrl = url;
-    return { action: 'updateLogo', message: 'Logo updated' };
-}
-
-function handleUpdateBanner(params) {
-    const { url } = params;
-    webpageState.bannerUrl = url;
-    return { action: 'updateBanner', message: 'Banner updated' };
+    console.log("Updated webpageState:", webpageState);
+    return { action: 'addButton', message: `Added button: ${text} (${url}) - ${color}` };
 }
 
 // 📌 **Start the Server**
 app.listen(port, () => {
   console.log(`🚀 Server running on port ${port}`);
-  console.log(`🌐 Visit http://localhost:${port} to see your webpage`);
 });
