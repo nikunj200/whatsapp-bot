@@ -8,18 +8,11 @@ const path = require('path');
 
 const app = express();
 const port = process.env.PORT || 3000;
-
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 // Store the latest webpage state
 let webpageState = {
-  buttons: [
-    {
-      url: '#',
-      text: 'Sample Button',
-      color: '#3498db'
-    }
-  ],
+  buttons: [],
   textContent: "<p>This is a sample text box. Content can be added or modified here.</p>",
   logoUrl: "https://placehold.co/200x80?text=Your+Logo",
   bannerUrl: "https://placehold.co/800x200?text=Your+Banner"
@@ -30,19 +23,10 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-// Debug logging middleware
-app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
-  if (req.method === 'POST') {
-    console.log('Request Body:', JSON.stringify(req.body));
-  }
-  next();
-});
-
 // Serve static files
 app.use(express.static(path.join(__dirname)));
 
-// Serve the HTML file as the homepage
+// Serve the homepage
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
@@ -52,7 +36,7 @@ app.get('/api/state', (req, res) => {
   res.json(webpageState);
 });
 
-// Function to process user instructions using Gemini AI
+// 🧠 **Process user instructions using Gemini AI**
 async function processInstruction(instruction) {
     console.log('Processing instruction:', instruction);
 
@@ -62,7 +46,7 @@ async function processInstruction(instruction) {
 
     const prompt = `
     You are an AI that translates user instructions into structured JSON commands.
-    Ensure colors are converted to proper HEX codes (e.g., "redish blue" -> "#4E5ABA").
+    Ensure colors are converted to HEX codes (e.g., "redish blue" -> "#4E5ABA").
     
     **Example Inputs & Outputs:**
     
@@ -99,26 +83,35 @@ async function processInstruction(instruction) {
             fullResponse += chunk.text();
         }
 
-        // Remove backticks and "json" tag
+        // ✅ **Fix: Remove backticks & clean AI response**
         const cleanResponse = fullResponse.replace(/```json|```/g, "").trim();
-
         console.log("Cleaned AI response:", cleanResponse);
-        return JSON.parse(cleanResponse);
+
+        // ✅ **Fix: Parse JSON correctly & ensure a valid response**
+        const parsedResponse = JSON.parse(cleanResponse);
+        if (!parsedResponse.message) {
+            if (parsedResponse.action === "addButton") {
+                parsedResponse.message = `Added button: ${parsedResponse.parameters.text} (${parsedResponse.parameters.url}) - ${parsedResponse.parameters.color}`;
+            } else if (parsedResponse.action === "addButtons" && parsedResponse.parameters?.buttons?.length > 0) {
+                parsedResponse.message = parsedResponse.parameters.buttons.map(
+                    btn => `🔹 ${btn.text} (${btn.url}) - ${btn.color}`
+                ).join("\n");
+            } else {
+                parsedResponse.message = "✅ Successfully processed your request.";
+            }
+        }
+
+        return parsedResponse;
     } catch (error) {
-        console.error('Error processing instruction with Gemini:', error);
-        return { action: 'error', message: 'AI processing failed' };
+        console.error("Error processing instruction with Gemini:", error);
+        return { action: "error", message: "AI processing failed." };
     }
 }
 
-
-
-// API endpoint for direct updates
+// 📌 **API endpoint for direct updates**
 app.post('/api/update', async (req, res) => {
     const { instruction } = req.body;
-
-    if (!instruction) {
-        return res.status(400).json({ error: 'No instruction provided' });
-    }
+    if (!instruction) return res.status(400).json({ error: 'No instruction provided' });
 
     const result = await processInstruction(instruction);
 
@@ -136,7 +129,7 @@ app.post('/api/update', async (req, res) => {
     }
 });
 
-// WhatsApp webhook endpoint
+// 📌 **WhatsApp Webhook for Handling AI Responses**
 app.post('/api/whatsapp-webhook', async (req, res) => {
     console.log('Received WhatsApp message:', req.body);
     const messageBody = req.body.Body;
@@ -145,21 +138,21 @@ app.post('/api/whatsapp-webhook', async (req, res) => {
     const twiml = new twilio.twiml.MessagingResponse();
 
     if (!result || result.action === 'unknown') {
-        twiml.message("❌ I couldn't understand that instruction. Try something like 'Add a link to instagram.com in red'.");
+        twiml.message("❌ I couldn't understand that instruction. Try something like 'Add a link to instagram.com in pink'.");
+    } else if (result.action === "addButton" && result.parameters) {
+        twiml.message(`✅ Added button: ${result.parameters.text} (${result.parameters.url}) - ${result.parameters.color}`);
     } else if (result.action === "addButtons" && result.parameters?.buttons?.length > 0) {
-        // If multiple buttons are present, send them in a structured response
         let buttonList = result.parameters.buttons.map(btn => `🔹 ${btn.text} (${btn.url}) - ${btn.color}`).join("\n");
         twiml.message(`✅ Added the following buttons:\n${buttonList}`);
     } else {
-        twiml.message(`✅ ${result.message}`);
+        twiml.message("✅ Successfully processed your request.");
     }
 
     res.writeHead(200, { 'Content-Type': 'text/xml' });
     res.end(twiml.toString());
 });
 
-
-// Functions to update the webpage state
+// 📌 **Functions to Update Webpage State**
 function handleAddButton(params) {
     const { url, text = "New Button", color = "#3498db" } = params;
     const button = { url, text, color };
@@ -185,8 +178,8 @@ function handleUpdateBanner(params) {
     return { action: 'updateBanner', message: 'Banner updated' };
 }
 
-// Start the server
+// 📌 **Start the Server**
 app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
-  console.log(`Visit http://localhost:${port} to see your webpage`);
+  console.log(`🚀 Server running on port ${port}`);
+  console.log(`🌐 Visit http://localhost:${port} to see your webpage`);
 });
