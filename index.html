@@ -171,35 +171,28 @@
 
         // Function to apply updates from the server
         function applyUpdates(state) {
-            // Update debug info
-            updateDebugInfo(state);
-            
-            // Update text content
-            if (state.textContent) {
-                updateTextBox(state.textContent);
-            }
-            
-            // Update logo
-            if (state.logoUrl) {
-                updateLogo(state.logoUrl);
-            }
-            
-            // Update banner
-            if (state.bannerUrl) {
-                updateBanner(state.bannerUrl);
-            }
-            
-            // Add buttons
-            if (state.buttons && state.buttons.length > 0) {
-                // Clear existing buttons first
-                document.getElementById('button-container').innerHTML = '';
-                
-                // Add each button from the state
-                state.buttons.forEach(button => {
-                    addButton(button.url, button.text, button.color);
-                });
-            }
-        }
+    updateDebugInfo(state);
+
+    if (state.textContent) {
+        updateTextBox(state.textContent);
+    }
+
+    if (state.logoUrl) {
+        updateLogo(state.logoUrl);
+    }
+
+    if (state.bannerUrl) {
+        updateBanner(state.bannerUrl);
+    }
+
+    if (state.buttons && state.buttons.length > 0) {
+        document.getElementById('button-container').innerHTML = '';
+        state.buttons.forEach(button => {
+            addButton(button.url, button.text, button.color); // Ensure AI-generated color is applied
+        });
+    }
+}
+
 
         // Function to check for updates from the server
         function checkForUpdates() {
