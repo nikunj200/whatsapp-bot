@@ -99,15 +99,17 @@ async function processInstruction(instruction) {
             fullResponse += chunk.text();
         }
 
-        console.log('Gemini AI raw response:', fullResponse);
+        // Remove backticks and "json" tag
+        const cleanResponse = fullResponse.replace(/```json|```/g, "").trim();
 
-        // Ensure we return a valid JSON
-        return JSON.parse(fullResponse.trim());
+        console.log("Cleaned AI response:", cleanResponse);
+        return JSON.parse(cleanResponse);
     } catch (error) {
         console.error('Error processing instruction with Gemini:', error);
         return { action: 'error', message: 'AI processing failed' };
     }
 }
+
 
 
 // API endpoint for direct updates
