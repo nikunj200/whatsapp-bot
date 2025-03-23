@@ -5,132 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Customizable Webpage</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
-            max-width: 1000px;
-            margin: 0 auto;
-        }
-        .logo {
-            max-width: 200px;
-            margin-bottom: 20px;
-        }
-        .banner {
-            width: 100%;
-            height: 200px;
-            background-color: #f0f0f0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 20px;
-            overflow: hidden;
-        }
-        .banner img {
-            max-width: 100%;
-            max-height: 100%;
-        }
-        .button-container {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-        .custom-button {
-            padding: 10px 20px;
-            background-color: #3498db;
-            color: white;
-            text-decoration: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-        .text-box {
-            width: 100%;
-            min-height: 200px;
-            border: 1px solid #ccc;
-            padding: 10px;
-            margin-bottom: 20px;
-        }
-        #status-bar {
-            padding: 10px;
-            background-color: #f8f9fa;
-            border-radius: 5px;
-            margin-bottom: 20px;
-            font-size: 14px;
-        }
-        #debug-panel {
-            border: 1px solid #ddd;
-            padding: 10px;
-            margin-top: 30px;
-            background-color: #f5f5f5;
-        }
-        #debug-panel h3 {
-            margin-top: 0;
-        }
-        #test-form {
-            margin-top: 10px;
-        }
-        #test-input {
-            width: 70%;
-            padding: 8px;
-        }
-        #test-button {
-            padding: 8px 15px;
-            background-color: #28a745;
-            color: white;
-            border: none;
-            cursor: pointer;
-        }
+        body { font-family: Arial, sans-serif; padding: 20px; max-width: 1000px; margin: auto; }
+        .button-container { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
+        .custom-button { padding: 10px 20px; color: white; text-decoration: none; border-radius: 5px; cursor: pointer; }
     </style>
 </head>
 <body>
-    <div id="status-bar">Status: Connecting to server...</div>
-
-    <div id="logo-container">
-        <img src="https://placehold.co/200x80?text=Your+Logo" alt="Logo" class="logo" id="logo">
-    </div>
-
-    <div class="banner" id="banner">
-        <img src="https://placehold.co/800x200?text=Your+Banner" alt="Banner" id="banner-img">
-    </div>
-
-    <div class="button-container" id="button-container">
-        <a href="#" class="custom-button" style="background-color: #3498db;">Sample Button</a>
-    </div>
-
-    <div class="text-box" id="text-box">
-        <p>This is a sample text box. Content can be added or modified here.</p>
-    </div>
-
-    <!-- Debug Panel -->
-    <div id="debug-panel">
-        <h3>Debugging Tools</h3>
-        <div>
-            <strong>Last update:</strong> <span id="last-update">Never</span>
-        </div>
-        <div>
-            <strong>Current state:</strong> <pre id="current-state">Loading...</pre>
-        </div>
-        <form id="test-form">
-            <h4>Test Command</h4>
-            <input type="text" id="test-input" placeholder="Type a command (e.g., Add a link to google.com in red color)">
-            <button type="submit" id="test-button">Test</button>
-        </form>
-    </div>
+    <h3>Dynamic Webpage</h3>
+    <div id="button-container"></div>
+    <button onclick="refreshState()">Refresh</button>
 
     <script>
-        // The backend URL - replace with your actual Render URL
-        const apiUrl = window.location.origin; // This will work when both frontend and backend are on the same domain
-        
-        // Function to update the status bar
-        function updateStatus(message, isError = false) {
-            const statusBar = document.getElementById('status-bar');
-            statusBar.textContent = `Status: ${message}`;
-            statusBar.style.backgroundColor = isError ? '#f8d7da' : '#d4edda';
-            statusBar.style.color = isError ? '#721c24' : '#155724';
-        }
-        
-        // Function to add a new button with custom link and color
+        const apiUrl = window.location.origin;
+
         function addButton(url, text, color) {
             const buttonContainer = document.getElementById('button-container');
             const newButton = document.createElement('a');
@@ -139,110 +26,23 @@
             newButton.textContent = text || 'New Button';
             newButton.style.backgroundColor = color || '#3498db';
             buttonContainer.appendChild(newButton);
-            updateStatus(`Added button: ${text} (${url})`);
         }
 
-        // Function to update text in the text box
-        function updateTextBox(content) {
-            const textBox = document.getElementById('text-box');
-            textBox.innerHTML = content;
-            updateStatus('Text content updated');
-        }
-
-        // Function to update the logo
-        function updateLogo(imageUrl) {
-            const logo = document.getElementById('logo');
-            logo.src = imageUrl;
-            updateStatus('Logo updated');
-        }
-
-        // Function to update the banner
-        function updateBanner(imageUrl) {
-            const bannerImg = document.getElementById('banner-img');
-            bannerImg.src = imageUrl;
-            updateStatus('Banner updated');
-        }
-
-        // Function to update the debug panel
-        function updateDebugInfo(state) {
-            document.getElementById('current-state').textContent = JSON.stringify(state, null, 2);
-            document.getElementById('last-update').textContent = new Date().toLocaleTimeString();
-        }
-
-        // Function to apply updates from the server
         function applyUpdates(state) {
-    updateDebugInfo(state);
-
-    if (state.textContent) {
-        updateTextBox(state.textContent);
-    }
-
-    if (state.logoUrl) {
-        updateLogo(state.logoUrl);
-    }
-
-    if (state.bannerUrl) {
-        updateBanner(state.bannerUrl);
-    }
-
-    if (state.buttons && state.buttons.length > 0) {
-        document.getElementById('button-container').innerHTML = '';
-        state.buttons.forEach(button => {
-            addButton(button.url, button.text, button.color); // Ensure AI-generated color is applied
-        });
-    }
-}
-
-
-        // Function to check for updates from the server
-        function checkForUpdates() {
-            fetch(`${apiUrl}/api/state`)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Network response was not ok');
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    applyUpdates(data);
-                    updateStatus('Connected to server - page is up to date');
-                })
-                .catch(error => {
-                    console.error('Error fetching updates:', error);
-                    updateStatus('Error connecting to server', true);
-                });
+            document.getElementById('button-container').innerHTML = '';
+            if (state.buttons && state.buttons.length > 0) {
+                state.buttons.forEach(button => addButton(button.url, button.text, button.color));
+            }
         }
 
-        // Handle the test form submission
-        document.getElementById('test-form').addEventListener('submit', function(e) {
-            e.preventDefault();
-            const command = document.getElementById('test-input').value;
-            if (!command) return;
-            
-            updateStatus('Testing command: ' + command);
-            
-            fetch(`${apiUrl}/api/test-update?command=${encodeURIComponent(command)}`)
+        function refreshState() {
+            fetch(`${apiUrl}/api/state`)
                 .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        updateStatus('Command processed successfully');
-                        // Refresh the page state
-                        checkForUpdates();
-                    } else {
-                        updateStatus('Error processing command', true);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    updateStatus('Error sending command', true);
-                });
-        });
+                .then(data => applyUpdates(data))
+                .catch(error => console.error('Error refreshing UI:', error));
+        }
 
-        // Check for updates when the page loads
-        window.addEventListener('load', checkForUpdates);
-        
-        // Check for updates every 5 seconds
-        setInterval(checkForUpdates, 5000);
+        refreshState();
     </script>
 </body>
 </html>
