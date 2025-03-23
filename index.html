@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Customizable Webpage</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        .logo {
+            max-width: 200px;
+            margin-bottom: 20px;
+        }
+        .banner {
+            width: 100%;
+            height: 200px;
+            background-color: #f0f0f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+        .banner img {
+            max-width: 100%;
+            max-height: 100%;
+        }
+        .button-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .custom-button {
+            padding: 10px 20px;
+            background-color: #3498db;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .text-box {
+            width: 100%;
+            min-height: 200px;
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div id="logo-container">
+        <img src="https://placehold.co/200x80?text=Your+Logo" alt="Logo" class="logo" id="logo">
+    </div>
+
+    <div class="banner" id="banner">
+        <img src="https://placehold.co/800x200?text=Your+Banner" alt="Banner" id="banner-img">
+    </div>
+
+    <div class="button-container" id="button-container">
+        <a href="#" class="custom-button" style="background-color: #3498db;">Sample Button</a>
+    </div>
+
+    <div class="text-box" id="text-box">
+        <p>This is a sample text box. Content can be added or modified here.</p>
+    </div>
+
+    <script>
+        // The backend URL will be filled in later
+        const apiUrl = 'YOUR_BACKEND_URL';
+        
+        // Function to add a new button with custom link and color
+        function addButton(url, text, color) {
+            const buttonContainer = document.getElementById('button-container');
+            const newButton = document.createElement('a');
+            newButton.href = url;
+            newButton.className = 'custom-button';
+            newButton.textContent = text || 'New Button';
+            newButton.style.backgroundColor = color || '#3498db';
+            buttonContainer.appendChild(newButton);
+        }
+
+        // Function to update text in the text box
+        function updateTextBox(content) {
+            const textBox = document.getElementById('text-box');
+            textBox.innerHTML = content;
+        }
+
+        // Function to update the logo
+        function updateLogo(imageUrl) {
+            const logo = document.getElementById('logo');
+            logo.src = imageUrl;
+        }
+
+        // Function to update the banner
+        function updateBanner(imageUrl) {
+            const bannerImg = document.getElementById('banner-img');
+            bannerImg.src = imageUrl;
+        }
+
+        // Function to apply updates from the server
+        function applyUpdates(state) {
+            // Update text content
+            if (state.textContent) {
+                updateTextBox(state.textContent);
+            }
+            
+            // Update logo
+            if (state.logoUrl) {
+                updateLogo(state.logoUrl);
+            }
+            
+            // Update banner
+            if (state.bannerUrl) {
+                updateBanner(state.bannerUrl);
+            }
+            
+            // Add buttons
+            if (state.buttons && state.buttons.length > 0) {
+                // Clear existing buttons first
+                document.getElementById('button-container').innerHTML = '';
+                
+                // Add each button from the state
+                state.buttons.forEach(button => {
+                    addButton(button.url, button.text, button.color);
+                });
+            }
+        }
+
+        // Function to check for updates from the server
+        function checkForUpdates() {
+            fetch(`${apiUrl}/api/state`)
+                .then(response => response.json())
+                .then(data => {
+                    applyUpdates(data);
+                })
+                .catch(error => {
+                    console.error('Error fetching updates:', error);
+                });
+        }
+
+        // Check for updates when the page loads
+        window.addEventListener('load', checkForUpdates);
+        
+        // Check for updates every 10 seconds
+        setInterval(checkForUpdates, 10000);
+    </script>
+</body>
+</html>
