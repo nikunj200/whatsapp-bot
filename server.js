@@ -129,6 +129,26 @@ app.post('/api/update', async (req, res) => {
     }
 });
 
+// WhatsApp Webhook for Handling AI Responses
+app.post('/api/whatsapp-webhook', async (req, res) => {
+    console.log('Received WhatsApp message:', req.body);
+    const messageBody = req.body.Body;
+    const result = await processInstruction(messageBody);
+
+    const twiml = new twilio.twiml.MessagingResponse();
+
+    if (!result || result.action === 'unknown') {
+        twiml.message("❌ I couldn't understand that instruction. Try something like 'Add a link to instagram.com in pink'.");
+    } else if (result.action === "addButton" && result.parameters) {
+        twiml.message(`✅ Added button: ${result.parameters.text} (${result.parameters.url}) - ${result.parameters.color}`);
+    } else {
+        twiml.message("✅ Successfully processed your request.");
+    }
+
+    res.writeHead(200, { 'Content-Type': 'text/xml' });
+    res.end(twiml.toString());
+});
+
 // Start the Server
 app.listen(port, () => {
     console.log(`🚀 Server running on port ${port}`);
