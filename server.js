@@ -1,3 +1,8 @@
+require('dotenv').config();
+const { GoogleGenerativeAI } = require("@google/generative-ai");
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+
+
 const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
@@ -105,110 +110,225 @@ app.post('/api/whatsapp-webhook', (req, res) => {
 });
 
 // Function to process instructions from WhatsApp
-function processInstruction(instruction) {
-  console.log('Processing instruction:', instruction);
+// function processInstruction(instruction) {
+//   console.log('Processing instruction:', instruction);
   
-  if (!instruction) {
-    return {
-      action: 'unknown',
-      message: 'No instruction provided'
-    };
-  }
+//   if (!instruction) {
+//     return {
+//       action: 'unknown',
+//       message: 'No instruction provided'
+//     };
+//   }
 
-  instruction = instruction.toLowerCase();
+//   instruction = instruction.toLowerCase();
   
-  // Add a link
-  if (instruction.includes('add a link') || instruction.includes('add link')) {
-    const urlMatch = instruction.match(/\b(https?:\/\/[^\s]+|www\.[^\s]+\.[^\s]+|[^\s]+\.(com|org|net|edu)[^\s]*)\b/);
-    const url = urlMatch ? urlMatch[0] : '#';
+//   // Add a link
+//   if (instruction.includes('add a link') || instruction.includes('add link')) {
+//     const urlMatch = instruction.match(/\b(https?:\/\/[^\s]+|www\.[^\s]+\.[^\s]+|[^\s]+\.(com|org|net|edu)[^\s]*)\b/);
+//     const url = urlMatch ? urlMatch[0] : '#';
     
-    // Extract color if specified
-    const colorMatch = instruction.match(/\b(red|blue|green|yellow|purple|black|orange|pink)\b/);
-    const color = getColorCode(colorMatch ? colorMatch[0] : 'blue');
+//     // Extract color if specified
+//     const colorMatch = instruction.match(/\b(red|blue|green|yellow|purple|black|orange|pink)\b/);
+//     const color = getColorCode(colorMatch ? colorMatch[0] : 'blue');
     
-    // Extract button text if specified
-    let buttonText = 'Link';
-    if (instruction.includes('text') && instruction.includes('"')) {
-      const textMatch = instruction.match(/"([^"]*)"/);
-      if (textMatch) buttonText = textMatch[1];
+//     // Extract button text if specified
+//     let buttonText = 'Link';
+//     if (instruction.includes('text') && instruction.includes('"')) {
+//       const textMatch = instruction.match(/"([^"]*)"/);
+//       if (textMatch) buttonText = textMatch[1];
+//     }
+    
+//     // Add the button to our state
+//     const newButton = {
+//       url: url.startsWith('www') ? 'https://' + url : url,
+//       color: color,
+//       text: buttonText
+//     };
+    
+//     webpageState.buttons.push(newButton);
+//     console.log('Added new button:', JSON.stringify(newButton));
+//     console.log('Updated state:', JSON.stringify(webpageState));
+    
+//     return {
+//       action: 'addButton',
+//       button: newButton,
+//       message: `Added a ${colorMatch ? colorMatch[0] : 'blue'} button linking to ${url}`
+//     };
+//   }
+  
+//   // Update text content
+//   if (instruction.includes('update text') || instruction.includes('change text')) {
+//     let newText = instruction;
+    
+//     if (instruction.includes('to "')) {
+//       const textMatch = instruction.match(/to "([^"]*)"/);
+//       if (textMatch) newText = textMatch[1];
+//     } else if (instruction.includes('with "')) {
+//       const textMatch = instruction.match(/with "([^"]*)"/);
+//       if (textMatch) newText = textMatch[1];
+//     }
+    
+//     webpageState.textContent = `<p>${newText}</p>`;
+//     console.log('Updated text content to:', newText);
+    
+//     return {
+//       action: 'updateText',
+//       text: newText,
+//       message: 'Text content updated'
+//     };
+//   }
+  
+//   // Change logo
+//   if (instruction.includes('change logo') || instruction.includes('update logo')) {
+//     const urlMatch = instruction.match(/\b(https?:\/\/[^\s]+|www\.[^\s]+\.[^\s]+|[^\s]+\.(com|org|net|edu)[^\s]*)\b/);
+//     const logoUrl = urlMatch ? urlMatch[0] : webpageState.logoUrl;
+    
+//     webpageState.logoUrl = logoUrl;
+//     console.log('Updated logo URL to:', logoUrl);
+    
+//     return {
+//       action: 'updateLogo',
+//       url: logoUrl,
+//       message: 'Logo updated'
+//     };
+//   }
+  
+//   // Change banner
+//   if (instruction.includes('change banner') || instruction.includes('update banner')) {
+//     const urlMatch = instruction.match(/\b(https?:\/\/[^\s]+|www\.[^\s]+\.[^\s]+|[^\s]+\.(com|org|net|edu)[^\s]*)\b/);
+//     const bannerUrl = urlMatch ? urlMatch[0] : webpageState.bannerUrl;
+    
+//     webpageState.bannerUrl = bannerUrl;
+//     console.log('Updated banner URL to:', bannerUrl);
+    
+//     return {
+//       action: 'updateBanner',
+//       url: bannerUrl,
+//       message: 'Banner updated'
+//     };
+//   }
+  
+//   console.log('Could not understand instruction');
+//   return {
+//     action: 'unknown',
+//     message: 'Could not understand instruction'
+//   };
+// }
+
+async function processInstruction(instruction) {
+    console.log('Processing instruction:', instruction);
+
+    if (!instruction) {
+        return { action: 'unknown', message: 'No instruction provided' };
     }
+
+    // Define a structured prompt for Gemini AI
+    const prompt = `
+    You are an intelligent assistant that translates user instructions into structured JSON commands.
+    Given an instruction, return a JSON response specifying the action and necessary parameters.
     
-    // Add the button to our state
-    const newButton = {
-      url: url.startsWith('www') ? 'https://' + url : url,
-      color: color,
-      text: buttonText
-    };
+    Example Inputs & Outputs:
     
-    webpageState.buttons.push(newButton);
-    console.log('Added new button:', JSON.stringify(newButton));
-    console.log('Updated state:', JSON.stringify(webpageState));
+    - **User Input:** "Add a link to google.com in red color"
+      **Output JSON:**
+      {
+        "action": "addButton",
+        "parameters": {
+          "url": "https://google.com",
+          "text": "Google",
+          "color": "red"
+        }
+      }
     
-    return {
-      action: 'addButton',
-      button: newButton,
-      message: `Added a ${colorMatch ? colorMatch[0] : 'blue'} button linking to ${url}`
-    };
-  }
-  
-  // Update text content
-  if (instruction.includes('update text') || instruction.includes('change text')) {
-    let newText = instruction;
+    - **User Input:** "Update text to 'Welcome to my site!'"
+      **Output JSON:**
+      {
+        "action": "updateText",
+        "parameters": {
+          "text": "Welcome to my site!"
+        }
+      }
     
-    if (instruction.includes('to "')) {
-      const textMatch = instruction.match(/to "([^"]*)"/);
-      if (textMatch) newText = textMatch[1];
-    } else if (instruction.includes('with "')) {
-      const textMatch = instruction.match(/with "([^"]*)"/);
-      if (textMatch) newText = textMatch[1];
+    - **User Input:** "Change logo to https://example.com/logo.png"
+      **Output JSON:**
+      {
+        "action": "updateLogo",
+        "parameters": {
+          "url": "https://example.com/logo.png"
+        }
+      }
+    
+    - **User Input:** "Change banner to https://example.com/banner.jpg"
+      **Output JSON:**
+      {
+        "action": "updateBanner",
+        "parameters": {
+          "url": "https://example.com/banner.jpg"
+        }
+      }
+    
+    ---
+    User Instruction: "${instruction}"
+    Return JSON only, no explanation.
+    `;
+
+    try {
+        const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+        const response = await model.generateContent(prompt);
+        const jsonResponse = response.response.text(); // Get raw response
+
+        console.log('Gemini AI raw response:', jsonResponse);
+
+        // Parse the JSON response
+        const parsedResponse = JSON.parse(jsonResponse);
+        return parsedResponse;
+    } catch (error) {
+        console.error('Error processing instruction with Gemini:', error);
+        return { action: 'error', message: 'AI processing failed' };
     }
-    
-    webpageState.textContent = `<p>${newText}</p>`;
-    console.log('Updated text content to:', newText);
-    
-    return {
-      action: 'updateText',
-      text: newText,
-      message: 'Text content updated'
-    };
-  }
-  
-  // Change logo
-  if (instruction.includes('change logo') || instruction.includes('update logo')) {
-    const urlMatch = instruction.match(/\b(https?:\/\/[^\s]+|www\.[^\s]+\.[^\s]+|[^\s]+\.(com|org|net|edu)[^\s]*)\b/);
-    const logoUrl = urlMatch ? urlMatch[0] : webpageState.logoUrl;
-    
-    webpageState.logoUrl = logoUrl;
-    console.log('Updated logo URL to:', logoUrl);
-    
-    return {
-      action: 'updateLogo',
-      url: logoUrl,
-      message: 'Logo updated'
-    };
-  }
-  
-  // Change banner
-  if (instruction.includes('change banner') || instruction.includes('update banner')) {
-    const urlMatch = instruction.match(/\b(https?:\/\/[^\s]+|www\.[^\s]+\.[^\s]+|[^\s]+\.(com|org|net|edu)[^\s]*)\b/);
-    const bannerUrl = urlMatch ? urlMatch[0] : webpageState.bannerUrl;
-    
-    webpageState.bannerUrl = bannerUrl;
-    console.log('Updated banner URL to:', bannerUrl);
-    
-    return {
-      action: 'updateBanner',
-      url: bannerUrl,
-      message: 'Banner updated'
-    };
-  }
-  
-  console.log('Could not understand instruction');
-  return {
-    action: 'unknown',
-    message: 'Could not understand instruction'
-  };
 }
+
+function handleAddLink(responseText) {
+    const urlMatch = responseText.match(/https?:\/\/[^\s]+/);
+    const url = urlMatch ? urlMatch[0] : '#';
+
+    const colorMatch = responseText.match(/\b(red|blue|green|yellow|purple|black|orange|pink)\b/);
+    const color = getColorCode(colorMatch ? colorMatch[0] : 'blue');
+
+    let buttonText = 'Link';
+    const textMatch = responseText.match(/"([^"]*)"/);
+    if (textMatch) buttonText = textMatch[1];
+
+    const newButton = { url, color, text: buttonText };
+    webpageState.buttons.push(newButton);
+
+    return { action: 'addButton', message: `Added a ${color} button linking to ${url}` };
+}
+
+function handleUpdateText(responseText) {
+    const textMatch = responseText.match(/"([^"]*)"/);
+    const newText = textMatch ? textMatch[1] : 'Updated content';
+
+    webpageState.textContent = `<p>${newText}</p>`;
+    return { action: 'updateText', message: 'Text content updated' };
+}
+
+function handleUpdateLogo(responseText) {
+    const urlMatch = responseText.match(/https?:\/\/[^\s]+/);
+    const logoUrl = urlMatch ? urlMatch[0] : webpageState.logoUrl;
+
+    webpageState.logoUrl = logoUrl;
+    return { action: 'updateLogo', message: 'Logo updated' };
+}
+
+function handleUpdateBanner(responseText) {
+    const urlMatch = responseText.match(/https?:\/\/[^\s]+/);
+    const bannerUrl = urlMatch ? urlMatch[0] : webpageState.bannerUrl;
+
+    webpageState.bannerUrl = bannerUrl;
+    return { action: 'updateBanner', message: 'Banner updated' };
+}
+
 
 // Helper function to convert color names to hex codes
 function getColorCode(colorName) {
