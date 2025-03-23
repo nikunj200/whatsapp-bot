@@ -4,15 +4,17 @@
     "description": "A customizable webpage with WhatsApp bot integration",
     "main": "server.js",
     "scripts": {
-      "start": "node server.js"
+        "start": "node server.js"
     },
     "dependencies": {
-      "express": "^4.18.2",
-      "cors": "^2.8.5",
-      "body-parser": "^1.20.2",
-      "twilio": "^4.19.0"
+        "@google/generative-ai": "^0.24.0",
+        "body-parser": "^1.20.2",
+        "cors": "^2.8.5",
+        "dotenv": "^16.4.7",
+        "express": "^4.18.2",
+        "twilio": "^4.19.0"
     },
     "engines": {
-      "node": "18.x"
+        "node": "18.x"
     }
-  }
+}
