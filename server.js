@@ -25,6 +25,15 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
+// Debug logging middleware
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+  if (req.method === 'POST') {
+    console.log('Request Body:', JSON.stringify(req.body));
+  }
+  next();
+});
+
 // Serve static files
 app.use(express.static(path.join(__dirname)));
 
@@ -35,7 +44,19 @@ app.get('/', (req, res) => {
 
 // Get the current webpage state
 app.get('/api/state', (req, res) => {
+  console.log('Sending current state:', JSON.stringify(webpageState));
   res.json(webpageState);
+});
+
+// Endpoint for direct updates (for testing)
+app.get('/api/test-update', (req, res) => {
+  const { command } = req.query;
+  if (!command) {
+    return res.status(400).json({ error: 'No command provided' });
+  }
+  
+  const result = processInstruction(command);
+  return res.json({ success: true, result });
 });
 
 // Endpoint for WhatsApp bot to send instructions
@@ -58,11 +79,17 @@ app.post('/api/update', (req, res) => {
 
 // WhatsApp webhook endpoint
 app.post('/api/whatsapp-webhook', (req, res) => {
+  console.log('WhatsApp webhook received:', JSON.stringify(req.body));
+  
   // Get the message body from WhatsApp
   const messageBody = req.body.Body;
   
+  console.log('Processing WhatsApp message:', messageBody);
+  
   // Process the instruction
   const result = processInstruction(messageBody);
+  
+  console.log('Processing result:', JSON.stringify(result));
   
   // Create a response to send back to WhatsApp
   const twiml = new twilio.twiml.MessagingResponse();
@@ -79,6 +106,8 @@ app.post('/api/whatsapp-webhook', (req, res) => {
 
 // Function to process instructions from WhatsApp
 function processInstruction(instruction) {
+  console.log('Processing instruction:', instruction);
+  
   if (!instruction) {
     return {
       action: 'unknown',
@@ -112,6 +141,8 @@ function processInstruction(instruction) {
     };
     
     webpageState.buttons.push(newButton);
+    console.log('Added new button:', JSON.stringify(newButton));
+    console.log('Updated state:', JSON.stringify(webpageState));
     
     return {
       action: 'addButton',
@@ -133,6 +164,7 @@ function processInstruction(instruction) {
     }
     
     webpageState.textContent = `<p>${newText}</p>`;
+    console.log('Updated text content to:', newText);
     
     return {
       action: 'updateText',
@@ -147,6 +179,7 @@ function processInstruction(instruction) {
     const logoUrl = urlMatch ? urlMatch[0] : webpageState.logoUrl;
     
     webpageState.logoUrl = logoUrl;
+    console.log('Updated logo URL to:', logoUrl);
     
     return {
       action: 'updateLogo',
@@ -161,6 +194,7 @@ function processInstruction(instruction) {
     const bannerUrl = urlMatch ? urlMatch[0] : webpageState.bannerUrl;
     
     webpageState.bannerUrl = bannerUrl;
+    console.log('Updated banner URL to:', bannerUrl);
     
     return {
       action: 'updateBanner',
@@ -169,6 +203,7 @@ function processInstruction(instruction) {
     };
   }
   
+  console.log('Could not understand instruction');
   return {
     action: 'unknown',
     message: 'Could not understand instruction'
@@ -194,4 +229,7 @@ function getColorCode(colorName) {
 // Start the server
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
+  console.log(`Visit http://localhost:${port} to see your webpage`);
+  console.log(`Use WhatsApp to send commands to your Twilio number`);
+  console.log(`For testing, visit http://localhost:${port}/api/test-update?command=add%20a%20link%20to%20google.com%20in%20red%20color`);
 });
