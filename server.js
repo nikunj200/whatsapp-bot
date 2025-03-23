@@ -91,19 +91,24 @@ async function processInstruction(instruction) {
     `;
 
     try {
-        const model = genAI.getGenerativeModel({ model: "gemini-pro" });
-        const response = await model.generateContent(prompt);
-        const jsonResponse = response.response.text().trim();
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+        const response = await model.generateContentStream({ contents: [{ parts: [{ text: prompt }] }] });
 
-        console.log('Gemini AI raw response:', jsonResponse);
+        let fullResponse = "";
+        for await (const chunk of response.stream) {
+            fullResponse += chunk.text();
+        }
+
+        console.log('Gemini AI raw response:', fullResponse);
 
         // Ensure we return a valid JSON
-        return JSON.parse(jsonResponse);
+        return JSON.parse(fullResponse.trim());
     } catch (error) {
         console.error('Error processing instruction with Gemini:', error);
         return { action: 'error', message: 'AI processing failed' };
     }
 }
+
 
 // API endpoint for direct updates
 app.post('/api/update', async (req, res) => {
