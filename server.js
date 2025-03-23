@@ -143,11 +143,21 @@ app.post('/api/whatsapp-webhook', async (req, res) => {
     const result = await processInstruction(messageBody);
 
     const twiml = new twilio.twiml.MessagingResponse();
-    twiml.message(`✅ ${result.message}`);
+
+    if (!result || result.action === 'unknown') {
+        twiml.message("❌ I couldn't understand that instruction. Try something like 'Add a link to instagram.com in red'.");
+    } else if (result.action === "addButtons" && result.parameters?.buttons?.length > 0) {
+        // If multiple buttons are present, send them in a structured response
+        let buttonList = result.parameters.buttons.map(btn => `🔹 ${btn.text} (${btn.url}) - ${btn.color}`).join("\n");
+        twiml.message(`✅ Added the following buttons:\n${buttonList}`);
+    } else {
+        twiml.message(`✅ ${result.message}`);
+    }
 
     res.writeHead(200, { 'Content-Type': 'text/xml' });
     res.end(twiml.toString());
 });
+
 
 // Functions to update the webpage state
 function handleAddButton(params) {
