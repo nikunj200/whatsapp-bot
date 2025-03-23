@@ -51,37 +51,61 @@ app.get('/api/state', (req, res) => {
     res.json(webpageState);
 });
 
-// Add button and save state
-function handleAddButton(params) {
-    const { url, text = "New Button", color = "#3498db" } = params;
-    const button = { url, text, color };
-    webpageState.buttons.push(button);
-    saveState();
-    return { action: 'addButton', message: `Added button linking to ${url} with color ${color}` };
-}
+// Process user instructions using Gemini AI
+async function processInstruction(instruction) {
+    console.log('Processing instruction:', instruction);
 
-// Update text and save state
-function handleUpdateText(params) {
-    const { text } = params;
-    webpageState.textContent = `<p>${text}</p>`;
-    saveState();
-    return { action: 'updateText', message: 'Text content updated' };
-}
+    if (!instruction) {
+        return { action: 'unknown', message: 'No instruction provided' };
+    }
 
-// Update logo and save state
-function handleUpdateLogo(params) {
-    const { url } = params;
-    webpageState.logoUrl = url;
-    saveState();
-    return { action: 'updateLogo', message: 'Logo updated' };
-}
+    const prompt = `
+    You are an AI that converts user instructions into structured JSON commands.
+    Ensure colors are converted to HEX codes (e.g., "redish blue" -> "#4E5ABA").
+    
+    **Example Inputs & Outputs:**
+    
+    - **User Input:** "Add a link to google.com in redish blue"
+      **Output JSON:**
+      {
+        "action": "addButton",
+        "parameters": {
+          "url": "https://google.com",
+          "text": "Google",
+          "color": "#4E5ABA"
+        }
+      }
+    
+    - **User Input:** "Update text to 'Welcome to my site!'"
+      **Output JSON:**
+      {
+        "action": "updateText",
+        "parameters": {
+          "text": "Welcome to my site!"
+        }
+      }
+    
+    **User Instruction:** "${instruction}"
+    **Return JSON only, without explanation.**
+    `;
 
-// Update banner and save state
-function handleUpdateBanner(params) {
-    const { url } = params;
-    webpageState.bannerUrl = url;
-    saveState();
-    return { action: 'updateBanner', message: 'Banner updated' };
+    try {
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+        const response = await model.generateContentStream({ contents: [{ parts: [{ text: prompt }] }] });
+
+        let fullResponse = "";
+        for await (const chunk of response.stream) {
+            fullResponse += chunk.text();
+        }
+
+        const cleanResponse = fullResponse.replace(/```json|```/g, "").trim();
+        console.log("AI Response:", cleanResponse);
+
+        return JSON.parse(cleanResponse);
+    } catch (error) {
+        console.error("Error processing instruction with Gemini:", error);
+        return { action: "error", message: "AI processing failed." };
+    }
 }
 
 // API endpoint for updates
@@ -103,26 +127,6 @@ app.post('/api/update', async (req, res) => {
         default:
             return res.json({ action: 'unknown', message: 'Could not understand instruction' });
     }
-});
-
-// WhatsApp Webhook for Handling AI Responses
-app.post('/api/whatsapp-webhook', async (req, res) => {
-    console.log('Received WhatsApp message:', req.body);
-    const messageBody = req.body.Body;
-    const result = await processInstruction(messageBody);
-
-    const twiml = new twilio.twiml.MessagingResponse();
-
-    if (!result || result.action === 'unknown') {
-        twiml.message("❌ I couldn't understand that instruction. Try something like 'Add a link to instagram.com in pink'.");
-    } else if (result.action === "addButton" && result.parameters) {
-        twiml.message(`✅ Added button: ${result.parameters.text} (${result.parameters.url}) - ${result.parameters.color}`);
-    } else {
-        twiml.message("✅ Successfully processed your request.");
-    }
-
-    res.writeHead(200, { 'Content-Type': 'text/xml' });
-    res.end(twiml.toString());
 });
 
 // Start the Server
